@@ -9,8 +9,9 @@ else
 	DEBFLAGS = -O2
 endif
 
-CFLAGS += $(DEBFLAGS)
-CFLAGS += -I..
+EXTRA_CFLAGS += $(DEBFLAGS)
+# for case RM_SIMPLE fall through
+EXTRA_CFLAGS += -I.. -Wno-implicit-fallthrough
 
 ifneq ($(KERNELRELEASE),)
 	# call from kernel build system
@@ -24,7 +25,7 @@ endif
 
 
 clean:
-	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions *.mod modules.order *.symvers .*.o.d
 
 depend .depend dep:
 	$(CC) $(CFLAGS) -M *.c > .depend
