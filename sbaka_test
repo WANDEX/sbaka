@@ -1,0 +1,80 @@
+#!/bin/sh
+# run me via sudo or as root user
+
+bdev="/dev/sbakaa"
+bprt="/dev/sbakaa1"
+
+mount_point="/mnt/sbaka"
+dpath="${mount_point}/subdir"
+fpath="${dpath}/f.txt"
+stext="Yep, it works!"
+
+if ! lsmod | grep ^sbaka >/dev/null 2>&1; then # suppress output & errors
+	echo "sbaka module not loaded:"
+	echo "^consider running manually - 'insmod sbaka'"
+	exit 7
+fi
+if [ ! -b "$bdev" ]; then
+	echo "block device not found!"
+	exit 6
+fi
+
+# do only if not already mounted
+if ! mount | grep "^$bprt" >/dev/null 2>&1; then # suppress output & errors
+	# create partition & file system
+	parted -s "$bdev" mklabel msdos
+	parted -s -a minimal "$bdev" mkpart primary ext4 1KiB 100%
+	mkfs.ext4 -L "woof" "$bprt"
+fi
+
+[ ! -d "$mount_point" ] && mkdir -p "$mount_point"
+if [ -d "$mount_point" ]; then
+	_mounted="" # initially empty
+	# try to mount partition only if not already mounted
+	if ! mount | grep "^$bprt" >/dev/null 2>&1; then # suppress output & errors
+		# mount & create subdir only if mount successful
+		mount "$bprt" "$mount_point" && _mounted="0"
+	else
+		_mounted="0"
+	fi
+	# check if variable is empty
+	if [ -z "$_mounted" ]; then
+		echo "$bprt - unable to mount partition! Exit"
+		exit 5
+	fi
+	[ ! -d "$dpath" ] && mkdir -p "$dpath"
+else
+	exit 4
+fi
+
+[ -d "$dpath" ] && chmod 660 "$dpath"
+touch "$fpath" || exit 3
+[ -f "$fpath" ] && chmod 660 "$fpath"
+
+if [ -w "$fpath" ]; then
+	echo "$stext" >> "$fpath"
+else
+	printf "%s\n%s\n" "$fpath" "^File does not exist or not writable! Exit"
+	exit 2
+fi
+
+fcontent="$(cat "$fpath")"
+if [ -z "$fcontent" ]; then
+	printf "%s\n" "File '$fpath' is empty!"
+	exit 1
+else
+	printf "%s\n>>>%s\n\n" "File '$fpath' content:" "$fcontent"
+fi
+
+echo "partition $bprt: will be unmounted (in 3 sec):"
+echo "press ^C -> to prevent 'umount $bprt'"
+sleep 3
+umount "$bprt"
+
+rmmod sbaka && echo "rmmod sbaka - success."
+active_sbakas="$(lsmod | grep ^sbaka)"
+if [ -n "$active_sbakas" ]; then
+	echo "$active_sbakas"
+	echo "^consider running manually - 'rmmod sbaka'"
+	exit 8
+fi
