@@ -1,3 +1,8 @@
+/*
+ * kernel: 5.4.17
+ * Simple disk driver.
+ */
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -78,6 +83,71 @@ struct sbaka_dev {
 
 static struct sbaka_dev *Devices = NULL;
 
+
+/*
+ * See https://github.com/openzfs/zfs/pull/10187/
+ */
+static inline struct request_queue *
+blk_generic_alloc_queue(make_request_fn make_request, int node_id)
+{
+	struct request_queue *q = blk_alloc_queue(GFP_KERNEL);
+	if (q != NULL)
+		blk_queue_make_request(q, make_request);
+	return (q);
+}
+
+/*
+ * Handle an I/O request.
+ */
+static void sbaka_transfer(struct sbaka_dev *dev, unsigned long sector,
+			   unsigned long nsect, char *buffer, int write)
+{
+	unsigned long offset = sector*KERNEL_SECTOR_SIZE;
+	unsigned long nbytes = nsect*KERNEL_SECTOR_SIZE;
+
+	if ((offset + nbytes) > dev->size) {
+		printk(KERN_NOTICE "Beyond-end write (%ld %ld)\n", offset, nbytes);
+		return;
+	}
+	if (write)
+		memcpy(dev->data + offset, buffer, nbytes);
+	else
+		memcpy(buffer, dev->data + offset, nbytes);
+}
+
+/*
+ * Transfer a single BIO.
+ */
+static int sbaka_xfer_bio(struct sbaka_dev *dev, struct bio *bio)
+{
+	struct bio_vec bvec;
+	struct bvec_iter iter;
+	sector_t sector = bio->bi_iter.bi_sector;
+
+	/* Do each segment independently. */
+	bio_for_each_segment(bvec, bio, iter) {
+		char *buffer = kmap_atomic(bvec.bv_page) + bvec.bv_offset;
+		sbaka_transfer(dev, sector, (bio_cur_bytes(bio) / KERNEL_SECTOR_SIZE),
+				buffer, bio_data_dir(bio) == WRITE);
+		sector += (bio_cur_bytes(bio) / KERNEL_SECTOR_SIZE);
+		kunmap_atomic(buffer);
+	}
+	return 0; /* Always "succeed" */
+}
+
+/*
+ * The direct make request.
+ */
+static blk_qc_t sbaka_make_request(struct request_queue *q, struct bio *bio)
+{
+	struct sbaka_dev *dev = bio->bi_disk->private_data;
+	int status;
+
+	status = sbaka_xfer_bio(dev, bio);
+	bio->bi_status = status;
+	bio_endio(bio);
+	return BLK_QC_T_NONE;
+}
 
 /*
  * Open and close.
@@ -225,13 +295,11 @@ static void setup_device(struct sbaka_dev *dev, int which)
 	 * The I/O queue, depending on whether we are using our own
 	 * make_request function or not.
 	 */
-	// FIXME: funcs are not defined currently
-	if (dev->queue == NULL) // XXX
-		goto out_vfree; // XXX
-
+	dev->queue = blk_generic_alloc_queue(sbaka_make_request, NUMA_NO_NODE);
+	if (dev->queue == NULL)
+		goto out_vfree;
 	blk_queue_logical_block_size(dev->queue, hardsect_size);
 	dev->queue->queuedata = dev;
-
 	/*
 	 * And the gendisk structure.
 	 */
