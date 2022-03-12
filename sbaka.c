@@ -33,11 +33,11 @@ static int nsectors = 204800;		/* How big the drive is: 2048=1M, 204800=100M */
 static int ndevices = 1;		/* create n block devices => (a,b,c,d...) */
 static char *dname = "sbaka";		/* device name */
 
-module_param(sbaka_major, int, 0);
-module_param(hardsect_size, int, 0);
-module_param(nsectors, int, 0);
-module_param(ndevices, int, 0);
-module_param(dname, charp, 0000);
+module_param(sbaka_major, int, 0440);
+module_param(hardsect_size, int, 0440);
+module_param(nsectors, int, 0440);
+module_param(ndevices, int, 0440);
+module_param(dname, charp, 0440);
 
 MODULE_PARM_DESC(dname, "Device name character string");
 
@@ -207,7 +207,7 @@ void sbaka_invalidate(struct timer_list *ldev)
 
 	spin_lock(&dev->lock);
 	if (dev->users || !dev->data)
-		printk (KERN_WARNING "sbaka: timer sanity check failed\n");
+		printk(KERN_WARNING "%s: timer sanity check failed\n", dname);
 	else
 		dev->media_change = 1;
 	spin_unlock(&dev->lock);
@@ -305,7 +305,13 @@ static void setup_device(struct sbaka_dev *dev, int which)
 	dev->gd->fops = &sbaka_ops;
 	dev->gd->queue = dev->queue;
 	dev->gd->private_data = dev;
-	snprintf (dev->gd->disk_name, 32, "sbaka%c", which + 'a');
+	/* FIXME: weird message in dmesg if dname is set via module_param and
+	after executing:
+		sudo insmod sbaka.ko dname="sdogs"
+		sudo ./sbaka_test "sdogs"
+	dmesg: ' sdogsa:'
+	*/
+	snprintf(dev->gd->disk_name, 32, "%s%c", dname, which + 'a');
 	set_capacity(dev->gd, nsectors*(hardsect_size/KERNEL_SECTOR_SIZE));
 	add_disk(dev->gd);
 	return;
@@ -321,9 +327,9 @@ static int __init sbaka_init(void)
 	/*
 	 * Get registered.
 	 */
-	sbaka_major = register_blkdev(sbaka_major, "sbaka");
+	sbaka_major = register_blkdev(sbaka_major, dname);
 	if (sbaka_major <= 0) {
-		printk(KERN_WARNING "sbaka: unable to get major number\n");
+		printk(KERN_WARNING "%s: unable to get major number\n", dname);
 		return -EBUSY;
 	}
 	/*
@@ -335,12 +341,12 @@ static int __init sbaka_init(void)
 	for (i = 0; i < ndevices; i++)
 		setup_device(Devices + i, i);
 
-	printk(KERN_INFO "sbaka: blkdev registered!\n");
+	printk(KERN_INFO "%s: blkdev registered!\n", dname);
 	return 0;
 
   out_unregister:
-	unregister_blkdev(sbaka_major, "sbaka");
-	printk(KERN_INFO "sbaka: blkdev unregistered!\n");
+	unregister_blkdev(sbaka_major, dname);
+	printk(KERN_INFO "%s: blkdev unregistered!\n", dname);
 	return -ENOMEM;
 }
 
@@ -360,8 +366,8 @@ static void __exit sbaka_exit(void)
 		if (dev->data)
 			vfree(dev->data);
 	}
-	unregister_blkdev(sbaka_major, "sbaka");
-	printk(KERN_INFO "sbaka: blkdev unregistered!\n");
+	unregister_blkdev(sbaka_major, dname);
+	printk(KERN_INFO "%s: blkdev unregistered!\n", dname);
 	kfree(Devices);
 }
 
