@@ -1,8 +1,12 @@
 #!/bin/sh
 # run me via sudo or as root user
 
-bdev="/dev/sbakaa"
-bprt="/dev/sbakaa1"
+# use $1 as the block device name, or default
+dname="${1:-"sbaka"}"
+diska="${dname}a" # first 'a' disk of the device
+
+bdev="/dev/${diska}"
+bprt="/dev/${diska}1"
 
 mount_point="/mnt/sbaka"
 dpath="${mount_point}/subdir"
