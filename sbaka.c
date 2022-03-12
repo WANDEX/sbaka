@@ -39,17 +39,6 @@ static int ndevices = 4;
 module_param(ndevices, int, 0);
 
 /*
- * The different "request modes" we can use.
- */
-enum {
-	RM_SIMPLE  = 0,	/* The extra-simple request function */
-	RM_FULL    = 1,	/* The full-blown version */
-	RM_NOQUEUE = 2,	/* Use make_request */
-};
-static int request_mode = RM_SIMPLE;
-module_param(request_mode, int, 0);
-
-/*
  * Minor number and partition management.
  */
 #define SBAKA_MINORS	16
@@ -363,12 +352,8 @@ static void sbaka_exit(void)
 			del_gendisk(dev->gd);
 			put_disk(dev->gd);
 		}
-		if (dev->queue) {
-			if (request_mode == RM_NOQUEUE)
-				blk_put_queue(dev->queue);
-			else
-				blk_cleanup_queue(dev->queue);
-		}
+		if (dev->queue)
+			blk_cleanup_queue(dev->queue);
 		if (dev->data)
 			vfree(dev->data);
 	}
