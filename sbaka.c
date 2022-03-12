@@ -347,7 +347,7 @@ static int __init sbaka_init(void)
 	return 0;
 
   out_unregister:
-	unregister_blkdev(sbaka_major, "sbd");  // FIXME: why 'sbd' is in original? typo??
+	unregister_blkdev(sbaka_major, "sbaka");
 	printk(KERN_INFO "sbaka: blkdev unregistered!\n");
 	return -ENOMEM;
 }
