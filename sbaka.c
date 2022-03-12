@@ -24,19 +24,22 @@
 #include <linux/buffer_head.h>	/* invalidate_bdev */
 #include <linux/bio.h>
 
-
 MODULE_DESCRIPTION("Very bad module, do not dare to use any of its code in your work");
 MODULE_LICENSE("Dual BSD/GPL");
 
-
 static int sbaka_major = 0;		/* 0 -> dynamic assignment of major number */
-module_param(sbaka_major, int, 0);
 static int hardsect_size = 512;		/* "hardware" sector size of the device */
-module_param(hardsect_size, int, 0);
 static int nsectors = 204800;		/* How big the drive is: 2048=1M, 204800=100M */
-module_param(nsectors, int, 0);
 static int ndevices = 1;		/* create n block devices => (a,b,c,d...) */
+static char *dname = "sbaka";		/* device name */
+
+module_param(sbaka_major, int, 0);
+module_param(hardsect_size, int, 0);
+module_param(nsectors, int, 0);
 module_param(ndevices, int, 0);
+module_param(dname, charp, 0000);
+
+MODULE_PARM_DESC(dname, "Device name character string");
 
 /*
  * Minor number and partition management.
