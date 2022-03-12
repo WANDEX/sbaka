@@ -341,7 +341,7 @@ static int __init sbaka_init(void)
 	return -ENOMEM;
 }
 
-static void sbaka_exit(void)
+static void __exit sbaka_exit(void)
 {
 	int i;
 	for (i = 0; i < ndevices; i++) {
