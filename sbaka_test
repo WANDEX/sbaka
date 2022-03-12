@@ -11,7 +11,7 @@ stext="Yep, it works!"
 
 if ! lsmod | grep ^sbaka >/dev/null 2>&1; then # suppress output & errors
 	echo "sbaka module not loaded:"
-	echo "^consider running manually - 'insmod sbaka'"
+	echo "^consider running manually - 'insmod sbaka.ko'"
 	exit 7
 fi
 if [ ! -b "$bdev" ]; then
