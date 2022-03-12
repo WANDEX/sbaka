@@ -29,13 +29,13 @@ MODULE_DESCRIPTION("Very bad module, do not dare to use any of its code in your 
 MODULE_LICENSE("Dual BSD/GPL");
 
 
-static int sbaka_major = 0;
+static int sbaka_major = 0;		/* 0 -> dynamic assignment of major number */
 module_param(sbaka_major, int, 0);
-static int hardsect_size = 512;
+static int hardsect_size = 512;		/* "hardware" sector size of the device */
 module_param(hardsect_size, int, 0);
-static int nsectors = 1024;	/* How big the drive is */
+static int nsectors = 204800;		/* How big the drive is: 2048=1M, 204800=100M */
 module_param(nsectors, int, 0);
-static int ndevices = 4;
+static int ndevices = 1;		/* create n block devices => (a,b,c,d...) */
 module_param(ndevices, int, 0);
 
 /*
