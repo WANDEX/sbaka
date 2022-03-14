@@ -18,11 +18,6 @@
 
 #include <linux/ioctl.h>
 
-/* Multiqueue only works on 2.4 */
-#ifdef SBAKA_MULTIQUEUE
-#    warning "Multiqueue only works on 2.4 kernels"
-#endif
-
 /*
  * Macros to help debugging
  */
@@ -52,20 +47,3 @@
 #define SBAKA_HARDSECT 512  /* 2.2 and 2.4 can used different values */
 
 #define SBAKAR_MAJOR 0      /* Dynamic major for raw device */
-/*
- * The sbaka device is removable: if it is left closed for more than
- * half a minute, it is removed. Thus use a usage count and a
- * kernel timer
- */
-
-typedef struct Sbaka_Dev {
-   int size;
-   int usage;
-   struct timer_list timer;
-   spinlock_t lock;
-   u8 *data;
-#ifdef SBAKA_MULTIQUEUE
-   request_queue_t *queue;
-   int busy;
-#endif
-}              Sbaka_Dev;
