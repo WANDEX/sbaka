@@ -1,6 +1,6 @@
 /*
- * kernel: 5.4.17
  * Simple disk driver.
+ * made for: kernel 5.4.17 uek
  */
 
 #include <linux/module.h>
@@ -8,30 +8,30 @@
 #include <linux/init.h>
 
 #include <linux/sched.h>
-#include <linux/kernel.h>	/* printk() */
-#include <linux/slab.h>		/* kmalloc() */
+#include <linux/kernel.h>	// printk()
+#include <linux/slab.h>		// kmalloc()
 #include <linux/fs.h>
-#include <linux/errno.h>	/* error codes */
+#include <linux/errno.h>	// error codes
 
 #include <linux/timer.h>
-#include <linux/types.h>	/* size_t */
-#include <linux/fcntl.h>	/* O_ACCMODE */
-#include <linux/hdreg.h>	/* HDIO_GETGEO */
+#include <linux/types.h>	// size_t
+#include <linux/fcntl.h>	// O_ACCMODE
+#include <linux/hdreg.h>	// HDIO_GETGEO
 #include <linux/kdev_t.h>
 #include <linux/vmalloc.h>
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
-#include <linux/buffer_head.h>	/* invalidate_bdev */
+#include <linux/buffer_head.h>	// invalidate_bdev
 #include <linux/bio.h>
 
-MODULE_DESCRIPTION("Very bad module, do not dare to use any of its code in your work");
+MODULE_DESCRIPTION("Very bad module, do not use any of its code in your work");
 MODULE_LICENSE("Dual BSD/GPL");
 
-static int sbaka_major = 0;		/* 0 -> dynamic assignment of major number */
-static int hardsect_size = 512;		/* "hardware" sector size of the device */
-static int nsectors = 204800;		/* How big the drive is: 2048=1M, 204800=100M */
-static int ndevices = 1;		/* create n block devices => (a,b,c,d...) */
-static char *dname = "sbaka";		/* device name */
+static int sbaka_major = 0;	   // 0 -> dynamic assignment of major number
+static int hardsect_size = 512;	   // "hardware" sector size of the device
+static int nsectors = 204800;	   // How big the drive is: 2048=1M 204800=100M
+static int ndevices = 1;	   // create n block devices => (a,b,c,d...)
+static char *dname = "sbaka";	   // device name
 
 module_param(sbaka_major, int, 0440);
 module_param(hardsect_size, int, 0440);
@@ -57,20 +57,20 @@ MODULE_PARM_DESC(dname, "Device name character string");
 /*
  * After this much idle time, the driver will simulate a media change.
  */
-#define INVALIDATE_DELAY	30*HZ
+#define INVALIDATE_DELAY	30 * HZ
 
 /*
  * The internal representation of our device.
  */
 struct sbaka_dev {
-        int size;                       /* Device size in sectors */
-        u8 *data;                       /* The data array */
-        short users;                    /* How many users */
-        short media_change;             /* Flag a media change? */
-        spinlock_t lock;                /* For mutual exclusion */
-        struct request_queue *queue;    /* The device request queue */
-        struct gendisk *gd;             /* The gendisk structure */
-        struct timer_list timer;        /* For simulated media changes */
+        int size;                       // Device size in sectors
+        u8 *data;                       // The data array
+        short users;                    // How many users
+        short media_change;             // Flag a media change?
+        spinlock_t lock;                // For mutual exclusion
+        struct request_queue *queue;    // The device request queue
+        struct gendisk *gd;             // The gendisk structure
+	struct timer_list timer;        // For simulated media changes
 };
 
 /* Device instance */
@@ -80,13 +80,13 @@ static struct sbaka_dev *Devices = NULL;
 /*
  * See https://github.com/openzfs/zfs/pull/10187/
  */
-static inline struct request_queue *
-blk_generic_alloc_queue(make_request_fn make_request, int node_id)
+static inline struct request_queue
+*blk_generic_alloc_queue(make_request_fn make_request, int node_id)
 {
 	struct request_queue *q = blk_alloc_queue(GFP_KERNEL);
 	if (q != NULL)
 		blk_queue_make_request(q, make_request);
-	return (q);
+	return q;
 }
 
 /*
@@ -95,8 +95,8 @@ blk_generic_alloc_queue(make_request_fn make_request, int node_id)
 static void sbaka_transfer(struct sbaka_dev *dev, unsigned long sector,
 			   unsigned long nsect, char *buffer, int write)
 {
-	unsigned long offset = sector*KERNEL_SECTOR_SIZE;
-	unsigned long nbytes = nsect*KERNEL_SECTOR_SIZE;
+	unsigned long offset = sector * KERNEL_SECTOR_SIZE;
+	unsigned long nbytes = nsect * KERNEL_SECTOR_SIZE;
 
 	if ((offset + nbytes) > dev->size) {
 		printk(KERN_NOTICE "Beyond-end write (%ld %ld)\n", offset, nbytes);
@@ -120,12 +120,13 @@ static int sbaka_xfer_bio(struct sbaka_dev *dev, struct bio *bio)
 	/* Do each segment independently. */
 	bio_for_each_segment(bvec, bio, iter) {
 		char *buffer = kmap_atomic(bvec.bv_page) + bvec.bv_offset;
-		sbaka_transfer(dev, sector, (bio_cur_bytes(bio) / KERNEL_SECTOR_SIZE),
+		sbaka_transfer(dev, sector,
+				(bio_cur_bytes(bio) / KERNEL_SECTOR_SIZE),
 				buffer, bio_data_dir(bio) == WRITE);
 		sector += (bio_cur_bytes(bio) / KERNEL_SECTOR_SIZE);
 		kunmap_atomic(buffer);
 	}
-	return 0; /* Always "succeed" */
+	return 0; // Always "succeed"
 }
 
 /*
@@ -152,7 +153,7 @@ static int sbaka_open(struct block_device *bdev, fmode_t mode)
 
 	del_timer_sync(&dev->timer);
 	spin_lock(&dev->lock);
-	if (! dev->users)
+	if (!dev->users)
 		check_disk_change(bdev);
 	dev->users++;
 	spin_unlock(&dev->lock);
@@ -193,7 +194,7 @@ int sbaka_revalidate(struct gendisk *gd)
 
 	if (dev->media_change) {
 		dev->media_change = 0;
-		memset (dev->data, 0, dev->size);
+		memset(dev->data, 0, dev->size);
 	}
 	return 0;
 }
@@ -217,25 +218,22 @@ void sbaka_invalidate(struct timer_list *ldev)
 /*
  * The ioctl() implementation
  */
-
-// int sbaka_ioctl (struct inode *inode, struct file *filp,
-//                  unsigned int cmd, unsigned long arg)
-int sbaka_ioctl (struct block_device *bdev, fmode_t mode,
+int sbaka_ioctl(struct block_device *bdev, fmode_t mode,
                  unsigned int cmd, unsigned long arg)
 {
 	long size;
 	struct hd_geometry geo;
 	struct sbaka_dev *dev = bdev->bd_disk->private_data;
 
-	switch(cmd) {
-	    case HDIO_GETGEO:
+	switch (cmd) {
+	case HDIO_GETGEO:
 		/*
 		 * Get geometry: since we are a virtual device, we have to make
-		 * up something plausible.  So we claim 16 sectors, four heads,
-		 * and calculate the corresponding number of cylinders.  We set the
-		 * start of data at sector four.
+		 * up something plausible. So we claim 16 sectors, four heads,
+		 * and calculate the corresponding number of cylinders.
+		 * We set the start of data at sector four.
 		 */
-		size = dev->size*(hardsect_size/KERNEL_SECTOR_SIZE);
+		size = dev->size * (hardsect_size / KERNEL_SECTOR_SIZE);
 		geo.cylinders = (size & ~0x3f) >> 6;
 		geo.heads = 4;
 		geo.sectors = 16;
@@ -245,7 +243,7 @@ int sbaka_ioctl (struct block_device *bdev, fmode_t mode,
 		return 0;
 	}
 
-	return -ENOTTY; /* unknown command */
+	return -ENOTTY; // unknown command
 }
 
 
@@ -299,11 +297,11 @@ static void setup_device(struct sbaka_dev *dev, int which)
 	/*
 	 * Get some memory.
 	 */
-	memset (dev, 0, sizeof (struct sbaka_dev));
-	dev->size = nsectors*hardsect_size;
+	memset(dev, 0, sizeof(struct sbaka_dev));
+	dev->size = nsectors * hardsect_size;
 	dev->data = vmalloc(dev->size);
 	if (dev->data == NULL) {
-		printk (KERN_NOTICE "vmalloc failure.\n");
+		printk(KERN_NOTICE "vmalloc failure.\n");
 		return;
 	}
 	spin_lock_init(&dev->lock);
@@ -326,27 +324,28 @@ static void setup_device(struct sbaka_dev *dev, int which)
 	 * And the gendisk structure.
 	 */
 	dev->gd = alloc_disk(SBAKA_MINORS);
-	if (! dev->gd) {
-		printk (KERN_NOTICE "alloc_disk failure\n");
+	if (!dev->gd) {
+		printk(KERN_NOTICE "alloc_disk failure\n");
 		goto out_vfree;
 	}
 	dev->gd->major = sbaka_major;
-	dev->gd->first_minor = which*SBAKA_MINORS;
+	dev->gd->first_minor = which * SBAKA_MINORS;
 	dev->gd->fops = &sbaka_ops;
 	dev->gd->queue = dev->queue;
 	dev->gd->private_data = dev;
-	/* FIXME: weird message in dmesg if dname is set via module_param and
-	after executing:
-		sudo insmod sbaka.ko dname="sdogs"
-		sudo ./sbaka_test "sdogs"
-	dmesg: ' sdogsa:'
-	*/
+	/*
+	 * FIXME: weird message in dmesg if dname is set via module_param and
+	 * after executing:
+	 * 	sudo insmod sbaka.ko dname="sdogs"
+	 * 	sudo ./sbaka_test "sdogs"
+	 * dmesg: ' sdogsa:'
+	 */
 	snprintf(dev->gd->disk_name, 32, "%s%c", dname, which + 'a');
-	set_capacity(dev->gd, nsectors*(hardsect_size/KERNEL_SECTOR_SIZE));
+	set_capacity(dev->gd, nsectors * (hardsect_size / KERNEL_SECTOR_SIZE));
 	add_disk(dev->gd);
 	return;
 
-  out_vfree:
+out_vfree:
 	if (dev->data)
 		vfree(dev->data);
 }
@@ -365,7 +364,7 @@ static int __init sbaka_init(void)
 	/*
 	 * Allocate the device array, and initialize each one.
 	 */
-	Devices = kmalloc(ndevices*sizeof (struct sbaka_dev), GFP_KERNEL);
+	Devices = kmalloc(ndevices * sizeof(struct sbaka_dev), GFP_KERNEL);
 	if (Devices == NULL)
 		goto out_unregister;
 	for (i = 0; i < ndevices; i++)
@@ -374,7 +373,7 @@ static int __init sbaka_init(void)
 	printk(KERN_INFO "%s: blkdev registered!\n", dname);
 	return 0;
 
-  out_unregister:
+out_unregister:
 	unregister_blkdev(sbaka_major, dname);
 	printk(KERN_INFO "%s: blkdev unregistered!\n", dname);
 	return -ENOMEM;
