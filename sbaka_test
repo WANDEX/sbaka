@@ -1,5 +1,11 @@
 #!/bin/sh
 # run me via sudo or as root user
+#
+# simple script which automates repetitive test procedure:
+# creates partition + fs on virtual sbaka disk
+# and mounts partition on automatically created /mnt/sbaka dir,
+# then writes message into new text file on that disk,
+# and shows you content of that file via cat command.
 
 # use $1 as the block device name, or default
 dname="${1:-"sbaka"}"
