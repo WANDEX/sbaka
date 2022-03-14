@@ -1,0 +1,9 @@
+Simple virtual block device driver
+==================================
+made for linux kernel 5.4.17 (uek)
+
+In order to test module:
+========================
+make
+sudo insmod ./sbaka.ko
+sudo ./sbaka_test
