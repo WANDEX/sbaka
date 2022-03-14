@@ -35,7 +35,7 @@ static char *dname = "sbaka";		/* device name */
 
 module_param(sbaka_major, int, 0440);
 module_param(hardsect_size, int, 0440);
-module_param(nsectors, int, 0440);
+module_param(nsectors, int, 0660);
 module_param(ndevices, int, 0440);
 module_param(dname, charp, 0440);
 
@@ -73,6 +73,7 @@ struct sbaka_dev {
         struct timer_list timer;        /* For simulated media changes */
 };
 
+/* Device instance */
 static struct sbaka_dev *Devices = NULL;
 
 
@@ -259,6 +260,35 @@ static struct block_device_operations sbaka_ops = {
 	.revalidate_disk = sbaka_revalidate,
 	.ioctl	         = sbaka_ioctl
 };
+
+
+/*
+ * TODO: change size of the block device dynamically (through sysfs attribute?)
+ * With something like that?
+ * device_create_file(&sbaka_device, &dev_attr_nsectors);
+ * If so ->
+ * I could not made device model & driver model for sysfs,
+ * to be able to use following commented out code. :(
+ */
+
+// FIXME: unfinished - dev_attr_nsectors is not used.
+/*
+static ssize_t show_nsectors(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", nsectors);
+}
+
+static ssize_t store_nsectors(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	kstrtol(buf, 10, (long int *)&nsectors);
+	return count;
+}
+
+// Declare sysfs entries. The macros creates instances of dev_attr_nsectors etc
+static DEVICE_ATTR(nsectors, S_IWUSR | S_IRUGO, show_nsectors, store_nsectors);
+ */
 
 
 /*
